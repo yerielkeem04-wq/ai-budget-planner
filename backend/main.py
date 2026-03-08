@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from google.genai import types 
 from google import genai
 
 # .env 파일의 환경 변수를 로드합니다.
