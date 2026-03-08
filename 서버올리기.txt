@@ -1,0 +1,13 @@
+백엔드: 터미널 1에서 .\venv\Scripts\activate 후 uvicorn main:app --reload
+프론트엔드: 터미널 2에서 cd frontend 후 npm run dev
+
+종료할 때: 터미널 창에서 각각 Ctrl + C를 눌러 서버를 끕니다.
+
+C:\my_python
+curl "https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyBXED4aYB1qATnbJHVq3b2B4mMSWRymDZc"
+
+
+깃허브 정보
+메일 : yerielkeem04@gmail.com
+유저네임 : yerielkeem04-wq
+Repository name: ai-budget-planner
