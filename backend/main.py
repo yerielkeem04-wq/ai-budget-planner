@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from google.genai import types 
 from google import genai
+from database import supabase
 
 # .env 파일의 환경 변수를 로드합니다.
 load_dotenv()
@@ -36,7 +37,27 @@ def get_gemini_response(prompt: str):
             model="gemini-2.5-flash", 
             contents=prompt
         )
-        return {"message": response.text}
+        answer = response.text
+
+        # 5. Supabase DB에 저장 (추가된 부분)
+        # 테이블 이름이 'chat_history'이고 컬럼이 'question', 'answer'라고 가정
+        db_data = {
+            "question": prompt,
+            "answer": answer
+        }
+        supabase.table("chat_history").insert(db_data).execute()
+
+        return {"message": answer, "db_status": "saved"}
+        
     except Exception as e:
-        # 에러가 발생하면 상세 내용을 리턴하여 원인을 파악합니다.
         return {"message": f"에러 발생: {str(e)}"}
+
+@app.get("/api/history")
+def get_history():
+    try:
+        # Supabase의 'chat_history' 테이블에서 모든 데이터를 가져옵니다.
+        # .order()를 써서 최신 데이터가 위로 오게 정렬합니다.
+        response = supabase.table("chat_history").select("*").order("created_at", desc=True).execute()
+        return response.data
+    except Exception as e:
+        return {"error": str(e)}
