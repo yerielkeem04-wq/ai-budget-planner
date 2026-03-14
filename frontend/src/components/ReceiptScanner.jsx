@@ -21,7 +21,7 @@ function ReceiptScanner({ session }) { // 💡 session prop 수신
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/analyze-receipt', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/analyze-receipt', {
         method: 'POST',
         body: formData,
       });
@@ -45,7 +45,7 @@ function ReceiptScanner({ session }) { // 💡 session prop 수신
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/save-receipt', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/api/save-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
