@@ -41,7 +41,7 @@ function App() {
     setLoading(true);
     try {
       // 💡 URL 뒤에 ?user_id=... 를 붙여서 내 데이터만 요청합니다.
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history?user_id=${session.user.id}`);
+      const response = await fetch(`http://127.0.0.1:8000/api/history?user_id=${session.user.id}`);
       const data = await response.json();
       setExpenses(data.map(parseExpenseData));
     } catch (error) {
@@ -116,10 +116,25 @@ function App() {
         </div>
 
         {/* 하단 네비게이션 */}
-        <nav className="absolute bottom-0 left-0 w-full h-20 bg-white/90 backdrop-blur-md border-t border-gray-50 flex items-center justify-around z-50 px-6">
-          <button onClick={() => setActiveTab('home')} className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'home' ? 'text-black' : 'text-gray-200'}`}>History</button>
-          <button onClick={() => setActiveTab('scan')} className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'scan' ? 'text-black' : 'text-gray-200'}`}>Scan</button>
-          <button onClick={() => setActiveTab('report')} className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'report' ? 'text-black' : 'text-gray-200'}`}>Report</button>
+        <nav className="fixed bottom-0 left-0 w-full h-20 bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around z-50 px-6 pb-safe">
+          <button 
+            onClick={() => setActiveTab('home')} 
+            className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'home' ? 'text-black' : 'text-gray-200'}`}
+          >
+            History
+          </button>
+          <button 
+            onClick={() => setActiveTab('scan')} 
+            className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'scan' ? 'text-black' : 'text-gray-200'}`}
+          >
+            Scan
+          </button>
+          <button 
+            onClick={() => setActiveTab('report')} 
+            className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'report' ? 'text-black' : 'text-gray-200'}`}
+          >
+            Report
+          </button>
         </nav>
       </div>
     </div>
