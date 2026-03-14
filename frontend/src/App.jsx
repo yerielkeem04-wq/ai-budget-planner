@@ -1,99 +1,127 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import './index.css';
+import MainHome from './components/MainHome';
+import ExpenseList from './components/ExpenseList';
+import ReceiptScanner from './components/ReceiptScanner';
+import Login from './components/Login';
+import { supabase } from './supabaseClient';
 
 function App() {
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('main');
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
 
-  // 1. 데이터 불러오기 (Render 주소로 변경하세요!)
-  const API_URL = "https://ai-budget-planner-6ga5.onrender.com"; 
+  // 1. 인증 세션 감지 및 관리
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
 
-  const fetchHistory = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/history`);
-      const data = await response.json();
-      setHistory(data);
-    } catch (e) { console.error(e); }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 2. 데이터 가공 로직
+  const parseExpenseData = (item) => {
+    const hasColon = item.question?.includes(':');
+    const displayTitle = hasColon ? item.question.split(':')[0] : (item.answer?.includes('/') ? item.answer.split('/')[2] : item.question);
+    const rawAmount = hasColon ? item.question.split(':')[1] : item.question;
+    const displayAmount = Number(String(rawAmount).replace(/[^0-9]/g, '')) || 0;
+    const displayDate = item.created_at ? item.created_at.split('T')[0] : "날짜 미상";
+    return { ...item, displayTitle, displayAmount, displayDate };
   };
 
-  useEffect(() => { fetchHistory(); }, []);
-
-  const handleSubmit = async () => {
-    if (!description || !amount) return;
+  // 3. 서버에서 데이터 불러오기 (내 데이터만!)
+  const fetchExpenses = async () => {
+    if (!session) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/data?prompt=${description} ${amount}원 지출`);
-      if (response.ok) {
-        setDescription(''); setAmount('');
-        fetchHistory();
-      }
-    } catch (e) { console.error(e); }
-    setLoading(false);
+      // 💡 URL 뒤에 ?user_id=... 를 붙여서 내 데이터만 요청합니다.
+      const response = await fetch(`http://127.0.0.1:8000/api/history?user_id=${session.user.id}`);
+      const data = await response.json();
+      setExpenses(data.map(parseExpenseData));
+    } catch (error) {
+      console.error("데이터 로드 실패:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- 디자인 시스템 (Java의 Constant 변수처럼 관리) ---
-  const theme = {
-    primary: '#4F46E5', // 인디고 블루
-    danger: '#EF4444',
-    success: '#10B981',
-    bg: '#F9FAFB',
-    card: '#FFFFFF',
-    text: '#1F2937',
-    subText: '#6B7280'
-  };
+  useEffect(() => {
+    if (session) {
+      fetchExpenses();
+    }
+  }, [session]);
 
-  const styles = {
-    container: { maxWidth: '480px', margin: '0 auto', backgroundColor: theme.bg, minHeight: '100vh', padding: '20px', fontFamily: '"Pretendard", sans-serif' },
-    card: { backgroundColor: theme.card, borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', marginBottom: '20px' },
-    header: { fontSize: '22px', fontWeight: '800', color: theme.text, marginBottom: '4px', textAlign: 'center' },
-    totalLabel: { fontSize: '14px', color: theme.subText, textAlign: 'center', marginBottom: '8px' },
-    amountBig: { fontSize: '32px', fontWeight: '800', color: theme.primary, textAlign: 'center', marginBottom: '24px' },
-    input: { width: '100%', padding: '16px', borderRadius: '16px', border: '1px solid #E5E7EB', marginBottom: '12px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' },
-    btn: { width: '100%', padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: theme.primary, color: 'white', fontSize: '16px', fontWeight: '700', cursor: 'pointer', transition: '0.2s' },
-    listHeader: { fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', justifyContent: 'space-between' },
-    item: { display: 'flex', alignItems: 'center', padding: '16px', backgroundColor: 'white', borderRadius: '20px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
-    iconBox: { width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px', fontSize: '20px' }
-  };
+  const totalAmount = expenses.reduce((sum, item) => sum + item.displayAmount, 0);
+
+  if (!session) {
+    return <Login />;
+  }
 
   return (
-    <div style={styles.container}>
-      <p style={styles.header}>Smart 가계부 💰</p>
-      <p style={styles.totalLabel}>이번 달 총 지출</p>
-      <p style={styles.amountBig}>
-        ₩ {history.reduce((acc, cur) => acc + (parseInt(cur.question.match(/\d+/)) || 0), 0).toLocaleString()}
-      </p>
+    <div className="flex justify-center items-center min-h-screen bg-gray-50 p-0 sm:p-4 font-sans text-slate-900">
+      <div className="relative flex flex-col w-full max-w-[420px] h-screen sm:h-[840px] bg-white shadow-xl overflow-hidden sm:rounded-[2rem]">
+        
+        {/* 상단 헤더 */}
+        <header className="flex items-center justify-between px-8 h-20 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+          <button 
+            onClick={() => setActiveTab('main')}
+            className={`text-[11px] font-black tracking-[0.2em] uppercase transition-colors ${
+              activeTab === 'main' ? 'text-black' : 'text-gray-200 hover:text-gray-400'
+            }`}
+          >
+            Home
+          </button>
+          <div className="h-[1px] w-6 bg-gray-100 rounded-full"></div>
+          <button 
+            onClick={() => supabase.auth.signOut()}
+            className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-black transition-colors"
+          >
+            Logout
+          </button>
+        </header>
 
-      {/* 입력 섹션 */}
-      <div style={styles.card}>
-        <input style={styles.input} placeholder="어디에 쓰셨나요? (예: 점심 마라탕)" value={description} onChange={(e)=>setDescription(e.target.value)} />
-        <input style={styles.input} type="number" placeholder="금액을 입력하세요" value={amount} onChange={(e)=>setAmount(e.target.value)} />
-        <button style={styles.btn} onClick={handleSubmit} disabled={loading}>
-          {loading ? 'AI 분석 중...' : '기록하기'}
-        </button>
-      </div>
+        {/* 중앙 콘텐츠 */}
+        <div className="flex-1 overflow-y-auto px-8 pb-32">
+          {activeTab === 'main' && (
+            <MainHome totalAmount={totalAmount} onNavigate={setActiveTab} />
+          )}
 
-      {/* 내역 섹션 */}
-      <div style={styles.listHeader}>
-        <span>최근 내역</span>
-        <span style={{color: theme.primary, fontSize: '14px'}}>전체보기</span>
-      </div>
+          {activeTab === 'home' && (
+            <ExpenseList expenses={expenses} loading={loading} onRefresh={fetchExpenses} />
+          )}
 
-      {history.map((item) => (
-        <div key={item.id} style={styles.item}>
-          <div style={styles.iconBox}>
-            {item.answer.includes('식비') ? '🍔' : item.answer.includes('교통') ? '🚌' : '💳'}
-          </div>
-          <div style={{flex: 1}}>
-            <p style={{fontWeight: '700', fontSize: '16px', marginBottom: '2px'}}>{item.question.split(' ')[0]}</p>
-            <p style={{fontSize: '12px', color: theme.subText}}>{new Date(item.created_at).toLocaleDateString()}</p>
-          </div>
-          <div style={{textAlign: 'right'}}>
-            <p style={{fontWeight: '700', color: theme.danger}}>- {item.question.match(/\d+/)?.toLocaleString()}원</p>
-            <p style={{fontSize: '11px', color: theme.primary}}>{item.answer.split(' ')[0]}</p>
-          </div>
+          {activeTab === 'scan' && (
+            <ReceiptScanner 
+              session={session} // 💡 세션 정보 전달 추가
+              onSaveSuccess={() => {
+                fetchExpenses();
+                setActiveTab('home');
+              }} 
+            />
+          )}
+
+          {activeTab === 'report' && (
+            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+              <p className="text-[10px] font-black text-gray-900 uppercase tracking-[0.4em]">Analysis</p>
+              <div className="h-[1px] w-4 bg-gray-200"></div>
+              <p className="text-gray-400 text-[11px] font-medium">데이터 수집 중입니다.</p>
+            </div>
+          )}
         </div>
-      ))}
+
+        {/* 하단 네비게이션 */}
+        <nav className="absolute bottom-0 left-0 w-full h-20 bg-white/90 backdrop-blur-md border-t border-gray-50 flex items-center justify-around z-50 px-6">
+          <button onClick={() => setActiveTab('home')} className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'home' ? 'text-black' : 'text-gray-200'}`}>History</button>
+          <button onClick={() => setActiveTab('scan')} className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'scan' ? 'text-black' : 'text-gray-200'}`}>Scan</button>
+          <button onClick={() => setActiveTab('report')} className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'report' ? 'text-black' : 'text-gray-200'}`}>Report</button>
+        </nav>
+      </div>
     </div>
   );
 }

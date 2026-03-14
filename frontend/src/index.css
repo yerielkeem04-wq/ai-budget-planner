@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    /* 프리텐다드나 시스템 폰트 적용 */
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* 스크롤바 숨기기 (선택 사항) */
+::-webkit-scrollbar {
+  display: none;
+}
