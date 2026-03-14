@@ -1,7 +1,7 @@
  -AI Budget Planner-
 
 일반 가계부에, AI를 활용으로 소비 패턴을 분석하고 맞춤형 예산 가이드라인을 제안하는 웹 애플리케이션.
-
+https://ai-budget-planner-alpha.vercel.app/
 
 
  --Tech Stack--
