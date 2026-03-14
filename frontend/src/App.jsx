@@ -41,7 +41,7 @@ function App() {
     setLoading(true);
     try {
       // 💡 URL 뒤에 ?user_id=... 를 붙여서 내 데이터만 요청합니다.
-      const response = await fetch(`http://127.0.0.1:8000/api/history?user_id=${session.user.id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history?user_id=${session.user.id}`);
       const data = await response.json();
       setExpenses(data.map(parseExpenseData));
     } catch (error) {
