@@ -4,6 +4,7 @@ import MainHome from './components/MainHome';
 import ExpenseList from './components/ExpenseList';
 import ReceiptScanner from './components/ReceiptScanner';
 import Login from './components/Login';
+import SignUp from './components/SignUp'; // 💡 회원가입 컴포넌트 추가 필요
 import { supabase } from './supabaseClient';
 
 function App() {
@@ -11,6 +12,9 @@ function App() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
+  
+  // 💡 'login', 'signup' 화면 전환을 위한 상태
+  const [authMode, setAuthMode] = useState(null); 
 
   // 1. 인증 세션 감지 및 관리
   useEffect(() => {
@@ -20,6 +24,7 @@ function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) setAuthMode(null); // 로그인 성공 시 인증 화면 닫기
     });
 
     return () => subscription.unsubscribe();
@@ -35,12 +40,11 @@ function App() {
     return { ...item, displayTitle, displayAmount, displayDate };
   };
 
-  // 3. 서버에서 데이터 불러오기 (내 데이터만!)
+  // 3. 서버에서 데이터 불러오기
   const fetchExpenses = async () => {
     if (!session) return;
     setLoading(true);
     try {
-      // 💡 URL 뒤에 ?user_id=... 를 붙여서 내 데이터만 요청합니다.
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history?user_id=${session.user.id}`);
       const data = await response.json();
       setExpenses(data.map(parseExpenseData));
@@ -57,10 +61,29 @@ function App() {
     }
   }, [session]);
 
+  // 💡 탭 전환 핸들러 (권한 체크)
+  const handleTabChange = (tab) => {
+    const protectedTabs = ['home', 'scan', 'report'];
+    if (protectedTabs.includes(tab) && !session) {
+      setAuthMode('login'); // 로그인이 필요한 탭 클릭 시 로그인 화면으로
+      return;
+    }
+    setActiveTab(tab);
+    setAuthMode(null);
+  };
+
   const totalAmount = expenses.reduce((sum, item) => sum + item.displayAmount, 0);
 
-  if (!session) {
-    return <Login />;
+  // --- 조건부 렌더링 시작 ---
+
+  // 💡 로그인 화면 모드
+  if (authMode === 'login') {
+    return <Login onGoSignUp={() => setAuthMode('signup')} onCancel={() => setAuthMode(null)} />;
+  }
+
+  // 💡 회원가입 화면 모드
+  if (authMode === 'signup') {
+    return <SignUp onGoLogin={() => setAuthMode('login')} onCancel={() => setAuthMode(null)} />;
   }
 
   return (
@@ -70,67 +93,83 @@ function App() {
         {/* 상단 헤더 */}
         <header className="flex items-center justify-between px-8 h-20 bg-white/80 backdrop-blur-md sticky top-0 z-50">
           <button 
-            onClick={() => setActiveTab('main')}
+            onClick={() => handleTabChange('main')}
             className={`text-[11px] font-black tracking-[0.2em] uppercase transition-colors ${
               activeTab === 'main' ? 'text-black' : 'text-gray-200 hover:text-gray-400'
             }`}
           >
             Home
           </button>
-          <div className="h-[1px] w-6 bg-gray-100 rounded-full"></div>
-          <button 
-            onClick={() => supabase.auth.signOut()}
-            className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-black transition-colors"
-          >
-            Logout
-          </button>
+          
+          <div className="flex items-center space-x-4">
+            {session ? (
+              <button 
+                onClick={() => {
+                  supabase.auth.signOut();
+                  setActiveTab('main');
+                }} 
+                className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-black"
+              >
+                Logout
+              </button>
+            ) : (
+              <button 
+                onClick={() => setAuthMode('login')}
+                className="text-[10px] font-bold text-black uppercase tracking-widest"
+              >
+                Login
+              </button>
+            )}
+          </div>
         </header>
 
         {/* 중앙 콘텐츠 */}
         <div className="flex-1 overflow-y-auto px-8 pb-32">
           {activeTab === 'main' && (
-            <MainHome totalAmount={totalAmount} onNavigate={setActiveTab} />
+            <MainHome totalAmount={totalAmount} onNavigate={handleTabChange} />
           )}
 
-          {activeTab === 'home' && (
-            <ExpenseList expenses={expenses} loading={loading} onRefresh={fetchExpenses} />
-          )}
-
-          {activeTab === 'scan' && (
-            <ReceiptScanner 
-              session={session} // 💡 세션 정보 전달 추가
-              onSaveSuccess={() => {
-                fetchExpenses();
-                setActiveTab('home');
-              }} 
-            />
-          )}
-
-          {activeTab === 'report' && (
-            <div className="flex flex-col items-center justify-center py-24 space-y-4">
-              <p className="text-[10px] font-black text-gray-900 uppercase tracking-[0.4em]">Analysis</p>
-              <div className="h-[1px] w-4 bg-gray-200"></div>
-              <p className="text-gray-400 text-[11px] font-medium">데이터 수집 중입니다.</p>
-            </div>
+          {/* 로그인된 사용자만 접근 가능한 콘텐츠 */}
+          {session && (
+            <>
+              {activeTab === 'home' && (
+                <ExpenseList expenses={expenses} loading={loading} onRefresh={fetchExpenses} />
+              )}
+              {activeTab === 'scan' && (
+                <ReceiptScanner 
+                  session={session}
+                  onSaveSuccess={() => {
+                    fetchExpenses();
+                    handleTabChange('home');
+                  }} 
+                />
+              )}
+              {activeTab === 'report' && (
+                <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-[0.4em]">Analysis</p>
+                  <p className="text-gray-400 text-[11px] font-medium">리포트 준비 중입니다.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {/* 하단 네비게이션 */}
         <nav className="fixed bottom-0 left-0 w-full h-20 bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around z-50 px-6 pb-safe">
           <button 
-            onClick={() => setActiveTab('home')} 
+            onClick={() => handleTabChange('home')} 
             className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'home' ? 'text-black' : 'text-gray-200'}`}
           >
             History
           </button>
           <button 
-            onClick={() => setActiveTab('scan')} 
+            onClick={() => handleTabChange('scan')} 
             className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'scan' ? 'text-black' : 'text-gray-200'}`}
           >
             Scan
           </button>
           <button 
-            onClick={() => setActiveTab('report')} 
+            onClick={() => handleTabChange('report')} 
             className={`flex-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'report' ? 'text-black' : 'text-gray-200'}`}
           >
             Report
