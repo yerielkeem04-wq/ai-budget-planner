@@ -106,6 +106,7 @@ async def analyze_receipt(file: UploadFile = File(...)):
 
 @app.post("/api/save-receipt")
 async def save_receipt(data: dict):
+
     try:
         # 1. 기존 데이터 추출 로직 (유지)
         title = data.get("item") or data.get("상호명") or "이름 없는 항목"
@@ -120,15 +121,18 @@ async def save_receipt(data: dict):
         db_data = {
             "question": f"{title}:{clean_amount_str}",
             "answer": f"영수증데이터/{date}/{title}",
-            "user_id": user_id  # 🌟 [추가] DB 컬럼에 유저 ID 매핑
+            "user_id": user_id,
+            "trsn_date": "2026-03-21",
+            "amount": "5000",
+            "Merchant Name": "굽네치킨"
         }
         
         # 3. DB 실행
         response = supabase.table("chat_history").insert(db_data).execute()
-        
+
         print(f"✅ DB 저장 성공 (User: {user_id}): {db_data}")
+        print(f"✅ DB 응답 결과: {response}")
         return {"status": "success", "data": response.data}
-        
     except Exception as e:
         print(f"❌ DB 저장 에러: {str(e)}")
         raise HTTPException(status_code=500, detail=f"저장 실패: {str(e)}")
