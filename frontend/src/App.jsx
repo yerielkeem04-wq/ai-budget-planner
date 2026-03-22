@@ -133,7 +133,7 @@ function App() {
           {session && (
             <>
               {activeTab === 'home' && (
-                <ExpenseList expenses={expenses} loading={loading} onRefresh={fetchExpenses} />
+                <ExpenseList session={session} expenses={expenses} loading={loading} onRefresh={fetchExpenses} />
               )}
               {activeTab === 'scan' && (
                 <ReceiptScanner 

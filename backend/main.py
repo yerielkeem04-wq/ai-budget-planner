@@ -122,9 +122,9 @@ async def save_receipt(data: dict):
             "question": f"{title}:{clean_amount_str}",
             "answer": f"영수증데이터/{date}/{title}",
             "user_id": user_id,
-            "trsn_date": "2026-03-21",
-            "amount": "5000",
-            "Merchant Name": "굽네치킨"
+            "trsn_date": date,
+            "amount": raw_amount,
+            "Merchant Name": title
         }
         
         # 3. DB 실행
@@ -135,4 +135,35 @@ async def save_receipt(data: dict):
         return {"status": "success", "data": response.data}
     except Exception as e:
         print(f"❌ DB 저장 에러: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"저장 실패: {str(e)}")
+
+@app.post("/api/save-minireceipt")
+async def save_receipt(data: dict):
+    try:
+        # 1. 데이터 추출
+        title = data.get("item") or data.get("title") or "이름 없는 항목"
+        raw_amount = str(data.get("amount") or "0")
+        clean_amount_str = raw_amount.replace(",", "").replace("원", "").strip()
+        date = data.get("date") or "2026-03-22"
+        category = data.get("category") or "기타" # 🌟 분류 추가
+        user_id = data.get("user_id") 
+
+        # 2. Supabase 저장 데이터 구성 (기존 테이블 구조 유지)
+        db_data = {
+            "question": f"[{category}] {title}:{clean_amount_str}",
+            "answer": f"수동입력/{date}/{title}",
+            "user_id": user_id,
+            "trsn_date": date,
+            "amount": raw_amount, 
+            "Merchant Name": title,
+            # "category": category
+        }
+        
+        # 3. DB 실행
+        response = supabase.table("chat_history").insert(db_data).execute()
+
+        print(f"✅ 저장 성공: {db_data}")
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        print(f"❌ 저장 에러: {str(e)}")
         raise HTTPException(status_code=500, detail=f"저장 실패: {str(e)}")
