@@ -14,6 +14,7 @@ Gemini API: gemini-2.5-flash
 
 Database Client : Supabase(PostgreSQL)
 
+Render
 
 
  [Frontend]
