@@ -155,16 +155,16 @@ function ReceiptScanner({ session }) {
           <div className="space-y-5">
             <div className="group">
               <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1 group-hover:text-black transition-colors">Merchant Name</p>
-              <p className="font-bold text-gray-900 text-xl tracking-tight">{result.상호명 || result.item || "Unknown"}</p>
+              <p className="font-bold text-gray-900 text-xl tracking-tight">{result.상호명 || result.store_name || "Unknown"}</p>
             </div>
             
             <div className="group">
               <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1 group-hover:text-black transition-colors">Amount</p>
               <div className="flex items-baseline gap-1">
                 <p className="font-black text-gray-900 text-3xl tracking-tighter">
-                  {result.금액 || result.amount ? Number(String(result.금액 || result.amount).replace(/[^0-9]/g, '')).toLocaleString() : "0"}
+                  {result.금액 || result.amount ? Number(String(result.금액 || result.total_amount).replace(/[^0-9]/g, '')).toLocaleString() : "0"}
                 </p>
-                <span className="text-xs font-black text-gray-400 uppercase">KRW</span>
+                <span className="text-xs font-black text-gray-400 uppercase">KRW*</span>
               </div>
             </div>
 
