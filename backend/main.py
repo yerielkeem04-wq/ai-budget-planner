@@ -76,19 +76,30 @@ async def analyze_receipt(file: UploadFile = File(...)):
     try:
         # 파일 데이터 읽기
         image_bytes = await file.read()
-        
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+
         # 3. 새로운 SDK 방식으로 콘텐츠 생성
         image_part = types.Part.from_bytes(
             data=image_bytes,
             mime_type="image/jpeg"
         )
         
+        prompt = """
+        영수증에서 다음 정보를 추출해서 JSON 형식으로 응답해줘.
+        {
+          "store_name": "상호명",
+          "total_amount": 총액(숫자만),
+          "date": "YYYY-MM-DD HH:mm:ss",
+          "payment_method": "카드/현금/간편결제",
+          "items": [
+            {"item_name": "품목명", "quantity": 수량, "unit_price": 단가, "total_price": 소계}
+          ]
+        }
+        """
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=[
-                "이 영수증의 '상호명(item)', '금액(amount)', '날짜(date)'를 찾아줘. 반드시 JSON 형식만 출력해.",
-                image_part  # 👈 수정된 부분
-            ]
+            contents=[prompt, image_part]
         )
 
         text = response.text
@@ -97,7 +108,6 @@ async def analyze_receipt(file: UploadFile = File(...)):
         end = text.rfind("}") + 1
         result = json.loads(text[start:end])
         
-        print(f"✅ 분석 성공: {result}")
         return result
         
     except Exception as e:
